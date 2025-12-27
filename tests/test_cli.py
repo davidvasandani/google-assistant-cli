@@ -66,3 +66,36 @@ def test_auth_logout_clears_credentials(tmp_path):
         result = runner.invoke(main, ["auth", "logout"])
         assert result.exit_code == 0
         assert not creds_file.exists()
+
+
+def test_broadcast_sends_message():
+    runner = CliRunner()
+    with patch("ghome.cli.load_credentials") as mock_load:
+        with patch("ghome.cli.broadcast_message") as mock_broadcast:
+            mock_broadcast.return_value = "Broadcast sent"
+            result = runner.invoke(main, ["broadcast", "Dinner is ready"])
+            assert result.exit_code == 0
+            mock_broadcast.assert_called_once()
+            assert "Broadcast sent" in result.output
+
+
+def test_broadcast_fails_without_auth():
+    runner = CliRunner()
+    with patch("ghome.cli.load_credentials") as mock_load:
+        mock_load.side_effect = CredentialsNotFoundError("No creds")
+        result = runner.invoke(main, ["broadcast", "test"])
+        assert result.exit_code == 1
+        assert "ghome auth login" in result.output.lower()
+
+
+def test_broadcast_interactive_mode():
+    runner = CliRunner()
+    with patch("ghome.cli.load_credentials"):
+        with patch("ghome.cli.broadcast_message") as mock_broadcast:
+            mock_broadcast.return_value = "Broadcast sent"
+            result = runner.invoke(
+                main,
+                ["broadcast", "--interactive"],
+                input="Hello\nWorld\nquit\n"
+            )
+            assert mock_broadcast.call_count == 2
