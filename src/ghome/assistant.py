@@ -30,6 +30,6 @@ def broadcast_message(
     command = f"broadcast {message}"
 
     with TextAssistant(credentials) as assistant:
-        response_text, _ = assistant.assist(command)
+        response_text, _, _ = assistant.assist(command)
 
     return response_text or "Broadcast sent"

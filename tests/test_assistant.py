@@ -8,7 +8,7 @@ from ghome.assistant import broadcast_message, BroadcastError
 
 def test_broadcast_message_sends_correct_command():
     mock_assistant = MagicMock()
-    mock_assistant.assist.return_value = ("Broadcast sent", None)
+    mock_assistant.assist.return_value = ("Broadcast sent", None, None)
 
     with patch("ghome.assistant.TextAssistant") as MockTextAssistant:
         MockTextAssistant.return_value.__enter__.return_value = mock_assistant
