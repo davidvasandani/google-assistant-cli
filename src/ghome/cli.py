@@ -9,9 +9,7 @@ from ghome import __version__
 from ghome.auth import (
     init_client_secret,
     run_oauth_flow,
-    load_credentials,
     ClientSecretNotFoundError,
-    CredentialsNotFoundError,
 )
 from ghome.config import get_client_secret_path, get_credentials_path
 
