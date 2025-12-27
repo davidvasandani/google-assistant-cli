@@ -21,8 +21,13 @@ def load_credentials() -> google.oauth2.credentials.Credentials:
             f"Credentials not found. Run 'ghome auth login' first."
         )
 
-    with open(creds_path, "r") as f:
-        creds_data = json.load(f)
+    try:
+        with open(creds_path, "r") as f:
+            creds_data = json.load(f)
+    except json.JSONDecodeError as e:
+        raise CredentialsNotFoundError(
+            f"Credentials file is invalid JSON. Run 'ghome auth login' to re-authenticate."
+        )
 
     return google.oauth2.credentials.Credentials(
         token=creds_data.get("token"),

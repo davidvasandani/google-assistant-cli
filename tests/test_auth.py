@@ -1,7 +1,6 @@
 # tests/test_auth.py
 import json
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
