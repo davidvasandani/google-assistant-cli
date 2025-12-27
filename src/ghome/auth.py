@@ -1,14 +1,24 @@
 """OAuth credential management."""
 
 import json
+import shutil
+from pathlib import Path
 
 import google.oauth2.credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
 
-from ghome.config import get_credentials_path
+from ghome.config import get_config_dir, get_client_secret_path, get_credentials_path
+
+SCOPES = ["https://www.googleapis.com/auth/assistant-sdk-prototype"]
 
 
 class CredentialsNotFoundError(Exception):
     """Raised when credentials file is not found."""
+    pass
+
+
+class ClientSecretNotFoundError(Exception):
+    """Raised when client secret file is not found."""
     pass
 
 
@@ -36,3 +46,52 @@ def load_credentials() -> google.oauth2.credentials.Credentials:
         client_id=creds_data.get("client_id"),
         client_secret=creds_data.get("client_secret"),
     )
+
+
+def init_client_secret(source_path: Path) -> None:
+    """Copy client secret file to config directory."""
+    if not source_path.exists():
+        raise ClientSecretNotFoundError(f"File not found: {source_path}")
+
+    config_dir = get_config_dir()
+    config_dir.mkdir(parents=True, exist_ok=True)
+
+    dest_path = get_client_secret_path()
+    shutil.copy(source_path, dest_path)
+
+
+def run_oauth_flow() -> google.oauth2.credentials.Credentials:
+    """Run OAuth flow and save credentials."""
+    client_secret_path = get_client_secret_path()
+
+    if not client_secret_path.exists():
+        raise ClientSecretNotFoundError(
+            "Client secret not found. Run 'ghome auth init <path>' first."
+        )
+
+    flow = InstalledAppFlow.from_client_secrets_file(
+        str(client_secret_path),
+        scopes=SCOPES,
+    )
+
+    credentials = flow.run_local_server(port=0)
+    save_credentials(credentials)
+    return credentials
+
+
+def save_credentials(credentials: google.oauth2.credentials.Credentials) -> None:
+    """Save credentials to file."""
+    config_dir = get_config_dir()
+    config_dir.mkdir(parents=True, exist_ok=True)
+
+    creds_path = get_credentials_path()
+    creds_data = {
+        "token": credentials.token,
+        "refresh_token": credentials.refresh_token,
+        "token_uri": credentials.token_uri,
+        "client_id": credentials.client_id,
+        "client_secret": credentials.client_secret,
+    }
+
+    with open(creds_path, "w") as f:
+        json.dump(creds_data, f)
