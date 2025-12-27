@@ -1,6 +1,7 @@
 """OAuth credential management."""
 
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -54,10 +55,11 @@ def init_client_secret(source_path: Path) -> None:
         raise ClientSecretNotFoundError(f"File not found: {source_path}")
 
     config_dir = get_config_dir()
-    config_dir.mkdir(parents=True, exist_ok=True)
+    config_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
 
     dest_path = get_client_secret_path()
     shutil.copy(source_path, dest_path)
+    os.chmod(dest_path, 0o600)  # Owner read/write only
 
 
 def run_oauth_flow() -> google.oauth2.credentials.Credentials:
@@ -82,7 +84,7 @@ def run_oauth_flow() -> google.oauth2.credentials.Credentials:
 def save_credentials(credentials: google.oauth2.credentials.Credentials) -> None:
     """Save credentials to file."""
     config_dir = get_config_dir()
-    config_dir.mkdir(parents=True, exist_ok=True)
+    config_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
 
     creds_path = get_credentials_path()
     creds_data = {
@@ -95,3 +97,5 @@ def save_credentials(credentials: google.oauth2.credentials.Credentials) -> None
 
     with open(creds_path, "w") as f:
         json.dump(creds_data, f)
+
+    os.chmod(creds_path, 0o600)  # Owner read/write only

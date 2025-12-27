@@ -1,6 +1,5 @@
 # tests/test_auth.py
 import json
-import shutil
 from unittest.mock import patch
 
 import pytest
