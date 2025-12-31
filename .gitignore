@@ -10,3 +10,4 @@ venv/
 *.egg
 .pytest_cache/
 client_secret*.json
+.DS_Store
