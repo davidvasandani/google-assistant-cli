@@ -13,14 +13,14 @@ from ghome.auth import (
     ClientSecretNotFoundError,
     CredentialsNotFoundError,
 )
-from ghome.assistant import broadcast_message, BroadcastError
+from ghome.assistant import broadcast_message, BroadcastError, send_command, CommandError
 from ghome.config import get_client_secret_path, get_credentials_path
 
 
 @click.group()
 @click.version_option(version=__version__)
 def main():
-    """Google Home CLI - Broadcast messages to Google Home devices."""
+    """Google Home CLI - Control Google Home devices from the command line."""
     pass
 
 
@@ -148,6 +148,73 @@ def _run_interactive_mode(credentials, verbose: bool):
             response = broadcast_message(message, credentials)
             click.echo(response)
         except BroadcastError as e:
+            click.echo(f"Error: {e}", err=True)
+        except Exception as e:
+            if verbose:
+                click.echo(f"Error: {e}", err=True)
+            else:
+                click.echo("Error: Failed to send. Use --verbose for details.", err=True)
+
+
+@main.command("command")
+@click.argument("text", required=False)
+@click.option("-i", "--interactive", is_flag=True, help="Interactive shell mode")
+@click.option("-v", "--verbose", is_flag=True, help="Show debug output")
+def command_cmd(text: str | None, interactive: bool, verbose: bool):
+    """Send any command to Google Assistant."""
+    try:
+        credentials = load_credentials()
+    except CredentialsNotFoundError:
+        click.echo("Error: Not authenticated.", err=True)
+        click.echo("Run 'ghome auth login' first.", err=True)
+        sys.exit(1)
+
+    if interactive:
+        _run_command_interactive_mode(credentials, verbose)
+    elif text:
+        _send_single_command(text, credentials, verbose)
+    else:
+        click.echo("Error: Command text required. Use --interactive for shell mode.", err=True)
+        sys.exit(2)
+
+
+def _send_single_command(text: str, credentials, verbose: bool):
+    """Send a single command."""
+    try:
+        response = send_command(text, credentials)
+        click.echo(response)
+    except CommandError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(2)
+    except Exception as e:
+        if verbose:
+            click.echo(f"Error: {e}", err=True)
+        else:
+            click.echo("Error: Failed to send command. Use --verbose for details.", err=True)
+        sys.exit(2)
+
+
+def _run_command_interactive_mode(credentials, verbose: bool):
+    """Run interactive command shell."""
+    click.echo("Interactive mode. Type 'quit' to exit.")
+
+    while True:
+        try:
+            text = click.prompt(">", prompt_suffix=" ")
+        except (EOFError, KeyboardInterrupt):
+            click.echo("\nExiting.")
+            break
+
+        if text.lower() in ("quit", "exit", "q"):
+            break
+
+        if not text.strip():
+            continue
+
+        try:
+            response = send_command(text, credentials)
+            click.echo(response)
+        except CommandError as e:
             click.echo(f"Error: {e}", err=True)
         except Exception as e:
             if verbose:

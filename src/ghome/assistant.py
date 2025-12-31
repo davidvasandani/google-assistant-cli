@@ -9,6 +9,11 @@ class BroadcastError(Exception):
     pass
 
 
+class CommandError(Exception):
+    """Raised when a command fails."""
+    pass
+
+
 MAX_MESSAGE_LENGTH = 200
 
 
@@ -33,3 +38,19 @@ def broadcast_message(
         response_text, _, _ = assistant.assist(command)
 
     return response_text or "Broadcast sent"
+
+
+def send_command(
+    command: str,
+    credentials: google.oauth2.credentials.Credentials,
+) -> str:
+    """Send any command to Google Assistant."""
+    command = command.strip()
+
+    if not command:
+        raise CommandError("Command cannot be empty")
+
+    with TextAssistant(credentials) as assistant:
+        response_text, _, _ = assistant.assist(command)
+
+    return response_text or "Command sent"

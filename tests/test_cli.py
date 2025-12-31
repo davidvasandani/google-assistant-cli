@@ -99,3 +99,44 @@ def test_broadcast_interactive_mode():
                 input="Hello\nWorld\nquit\n"
             )
             assert mock_broadcast.call_count == 2
+
+
+def test_command_sends_command():
+    runner = CliRunner()
+    with patch("ghome.cli.load_credentials") as mock_load:
+        with patch("ghome.cli.send_command") as mock_cmd:
+            mock_cmd.return_value = "The volume is now 10"
+            result = runner.invoke(main, ["command", "set kitchen display volume 10"])
+            assert result.exit_code == 0
+            mock_cmd.assert_called_once()
+            assert "The volume is now 10" in result.output
+
+
+def test_command_fails_without_auth():
+    runner = CliRunner()
+    with patch("ghome.cli.load_credentials") as mock_load:
+        mock_load.side_effect = CredentialsNotFoundError("No creds")
+        result = runner.invoke(main, ["command", "test"])
+        assert result.exit_code == 1
+        assert "ghome auth login" in result.output.lower()
+
+
+def test_command_interactive_mode():
+    runner = CliRunner()
+    with patch("ghome.cli.load_credentials"):
+        with patch("ghome.cli.send_command") as mock_cmd:
+            mock_cmd.return_value = "Done"
+            result = runner.invoke(
+                main,
+                ["command", "--interactive"],
+                input="set volume 5\nwhat time is it\nquit\n"
+            )
+            assert mock_cmd.call_count == 2
+
+
+def test_command_requires_text_or_interactive():
+    runner = CliRunner()
+    with patch("ghome.cli.load_credentials"):
+        result = runner.invoke(main, ["command"])
+        assert result.exit_code == 2
+        assert "Command text required" in result.output
