@@ -5,6 +5,7 @@ import os
 import shutil
 from pathlib import Path
 
+import google.auth.transport.requests
 import google.oauth2.credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 
@@ -40,13 +41,24 @@ def load_credentials() -> google.oauth2.credentials.Credentials:
             f"Credentials file is invalid JSON. Run 'ghome auth login' to re-authenticate."
         )
 
-    return google.oauth2.credentials.Credentials(
+    credentials = google.oauth2.credentials.Credentials(
         token=creds_data.get("token"),
         refresh_token=creds_data.get("refresh_token"),
         token_uri=creds_data.get("token_uri"),
         client_id=creds_data.get("client_id"),
         client_secret=creds_data.get("client_secret"),
     )
+
+    if credentials.expired or not credentials.valid:
+        if credentials.refresh_token:
+            credentials.refresh(google.auth.transport.requests.Request())
+            save_credentials(credentials)
+        else:
+            raise CredentialsNotFoundError(
+                "Token expired and no refresh token available. Run 'ghome auth login' to re-authenticate."
+            )
+
+    return credentials
 
 
 def init_client_secret(source_path: Path) -> None:
