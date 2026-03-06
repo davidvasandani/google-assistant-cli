@@ -7,9 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-arm64:
     runs-on: macos-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -20,10 +19,9 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]" pyinstaller
 
-      - name: Build universal binary
+      - name: Build binary
         run: |
           pyinstaller --onefile --name ghome \
-            --target-arch universal2 \
             --hidden-import=grpc \
             --hidden-import=google.auth.transport.grpc \
             --hidden-import=ghome.cli \
@@ -33,15 +31,53 @@ jobs:
             ghome_entry.py
 
       - name: Rename binary
-        run: mv dist/ghome dist/ghome-macos-universal2
+        run: mv dist/ghome dist/ghome-macos-arm64
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ghome-macos-universal2
-          path: dist/ghome-macos-universal2
+          name: ghome-macos-arm64
+          path: dist/ghome-macos-arm64
+
+  build-x86_64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rosetta 2
+        run: softwareupdate --install-rosetta --agree-to-license
+
+      - name: Install x86_64 Homebrew
+        run: |
+          arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+      - name: Install x86_64 Python 3.12
+        run: arch -x86_64 /usr/local/bin/brew install python@3.12
+
+      - name: Install dependencies
+        run: arch -x86_64 /usr/local/opt/python@3.12/bin/python3.12 -m pip install -e ".[dev]" pyinstaller
+
+      - name: Build binary
+        run: |
+          arch -x86_64 /usr/local/opt/python@3.12/bin/python3.12 -m PyInstaller \
+            --onefile --name ghome \
+            --hidden-import=grpc \
+            --hidden-import=google.auth.transport.grpc \
+            --hidden-import=ghome.cli \
+            --hidden-import=ghome.auth \
+            --hidden-import=ghome.assistant \
+            --hidden-import=ghome.config \
+            ghome_entry.py
+
+      - name: Rename binary
+        run: mv dist/ghome dist/ghome-macos-x86_64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ghome-macos-x86_64
+          path: dist/ghome-macos-x86_64
 
   release:
-    needs: build
+    needs: [build-arm64, build-x86_64]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
 
@@ -54,4 +90,4 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/ghome-macos-universal2
+          files: dist/ghome-macos-*
