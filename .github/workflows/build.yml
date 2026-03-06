@@ -1,0 +1,64 @@
+name: Build
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            arch: arm64
+          - os: macos-13
+            arch: x86_64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]" pyinstaller
+
+      - name: Build binary
+        run: |
+          pyinstaller --onefile --name ghome \
+            --hidden-import=grpc \
+            --hidden-import=google.auth.transport.grpc \
+            --hidden-import=ghome.cli \
+            --hidden-import=ghome.auth \
+            --hidden-import=ghome.assistant \
+            --hidden-import=ghome.config \
+            ghome_entry.py
+
+      - name: Rename binary with arch suffix
+        run: mv dist/ghome dist/ghome-macos-${{ matrix.arch }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ghome-macos-${{ matrix.arch }}
+          path: dist/ghome-macos-${{ matrix.arch }}
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/ghome-macos-*
