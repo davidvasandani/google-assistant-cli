@@ -3,6 +3,7 @@
 import json
 import os
 import shutil
+from datetime import datetime
 from pathlib import Path
 
 import google.auth.transport.requests
@@ -41,12 +42,16 @@ def load_credentials() -> google.oauth2.credentials.Credentials:
             f"Credentials file is invalid JSON. Run 'ghome auth login' to re-authenticate."
         )
 
+    expiry_str = creds_data.get("expiry")
+    expiry = datetime.fromisoformat(expiry_str).replace(tzinfo=None) if expiry_str else None
+
     credentials = google.oauth2.credentials.Credentials(
         token=creds_data.get("token"),
         refresh_token=creds_data.get("refresh_token"),
         token_uri=creds_data.get("token_uri"),
         client_id=creds_data.get("client_id"),
         client_secret=creds_data.get("client_secret"),
+        expiry=expiry,
     )
 
     if credentials.expired or not credentials.valid:
@@ -105,6 +110,7 @@ def save_credentials(credentials: google.oauth2.credentials.Credentials) -> None
         "token_uri": credentials.token_uri,
         "client_id": credentials.client_id,
         "client_secret": credentials.client_secret,
+        "expiry": credentials.expiry.isoformat() if credentials.expiry else None,
     }
 
     with open(creds_path, "w") as f:

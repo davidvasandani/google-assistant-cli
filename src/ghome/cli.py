@@ -1,5 +1,6 @@
 """Command-line interface for Google Home CLI."""
 
+import readline  # noqa: F401 — enables arrow key history in interactive mode
 import sys
 from pathlib import Path
 
@@ -17,7 +18,15 @@ from ghome.assistant import broadcast_message, BroadcastError, send_command, Com
 from ghome.config import get_client_secret_path, get_credentials_path
 
 
-@click.group()
+ALIASES = {"b": "broadcast", "c": "command"}
+
+
+class AliasedGroup(click.Group):
+    def get_command(self, ctx, cmd_name):
+        return super().get_command(ctx, ALIASES.get(cmd_name, cmd_name))
+
+
+@click.group(cls=AliasedGroup)
 @click.version_option(version=__version__)
 def main():
     """Google Home CLI - Control Google Home devices from the command line."""
@@ -90,10 +99,11 @@ def auth_logout():
 
 
 @main.command()
-@click.argument("message", required=False)
+@click.argument("message", nargs=-1, required=False)
 @click.option("-i", "--interactive", is_flag=True, help="Interactive shell mode")
 @click.option("-v", "--verbose", is_flag=True, help="Show debug output")
-def broadcast(message: str | None, interactive: bool, verbose: bool):
+def broadcast(message: tuple, interactive: bool, verbose: bool):
+    message = " ".join(message) if message else None
     """Broadcast a message to all Google Home devices."""
     try:
         credentials = load_credentials()
@@ -157,10 +167,11 @@ def _run_interactive_mode(credentials, verbose: bool):
 
 
 @main.command("command")
-@click.argument("text", required=False)
+@click.argument("text", nargs=-1, required=False)
 @click.option("-i", "--interactive", is_flag=True, help="Interactive shell mode")
 @click.option("-v", "--verbose", is_flag=True, help="Show debug output")
-def command_cmd(text: str | None, interactive: bool, verbose: bool):
+def command_cmd(text: tuple, interactive: bool, verbose: bool):
+    text = " ".join(text) if text else None
     """Send any command to Google Assistant."""
     try:
         credentials = load_credentials()
